@@ -475,8 +475,8 @@ scheduler(void)
     }
     if(found == 0) {
       // nothing to run; stop running on this core until an interrupt.
-      intr_on();
-      asm volatile("wfi");
+      intr_on(); // 인터럽트를 켜고
+      asm volatile("wfi");  // "Wait For Interrupt" 명령어로 CPU를 일시 정지
     }
   }
 }
