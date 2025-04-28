@@ -447,27 +447,28 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
 
-  c->proc = 0;
+  c->proc = 0; // 이 cpu는 아직 아무 프로세스도 실행 중이 아님
   for(;;){
     // The most recent process to run may have had interrupts
     // turned off; enable them to avoid a deadlock if all
     // processes are waiting.
-    intr_on();
+    intr_on(); // 혹시 인터럽트가 꺼져 있었으면 켜줌
 
     int found = 0;
-    for(p = proc; p < &proc[NPROC]; p++) {
-      acquire(&p->lock);
-      if(p->state == RUNNABLE) {
+    for(p = proc; p < &proc[NPROC]; p++) { //모든 프로세스 배열을 돌면서
+      acquire(&p->lock); // 프로세스 락을 잡고
+      if(p->state == RUNNABLE) { // runnable state의 프로세스를 찾으면
         // Switch to chosen process.  It is the process's job
         // to release its lock and then reacquire it
         // before jumping back to us.
-        p->state = RUNNING;
-        c->proc = p;
-        swtch(&c->context, &p->context);
+        p->state = RUNNING; // running state로 변경
+        c->proc = p; // 이 CPU가 이 프로세스를 실행한다고 기록
+        swtch(&c->context, &p->context); // 커널 스케줄러 context -> 프로세스 context로 전환 (실제 실행)
 
         // Process is done running for now.
         // It should have changed its p->state before coming back.
-        c->proc = 0;
+        // 프로세스가 돌아오면 (다시 스케줄러로 복귀)
+        c->proc = 0; 
         found = 1;
       }
       release(&p->lock);
