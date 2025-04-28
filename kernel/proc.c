@@ -511,11 +511,11 @@ sched(void)
 void
 yield(void)
 {
-  struct proc *p = myproc();
-  acquire(&p->lock);
-  p->state = RUNNABLE;
-  sched();
-  release(&p->lock);
+  struct proc *p = myproc();       // 현재 CPU에서 돌아가고 있는 프로세스 p를 가져옴
+  acquire(&p->lock);               // 프로세스 p의 락을 획득 (다른 CPU나 인터럽트가 접근하지 못하게 보호)
+  p->state = RUNNABLE;             // 현재 프로세스를 "RUNNABLE" 상태로 바꿈 (다시 스케줄러가 실행할 수 있도록 함)
+  sched();                         // 스케줄러를 호출해서 다른 프로세스에게 CPU를 넘김
+  release(&p->lock);               // 락을 해제함
 }
 
 // A fork child's very first scheduling by scheduler()

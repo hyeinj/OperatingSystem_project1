@@ -91,3 +91,10 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+// Project 1
+void
+sys_yield(void)
+{
+  yield();
+}
