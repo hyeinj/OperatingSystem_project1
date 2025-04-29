@@ -79,6 +79,10 @@ update_proc_level(struct proc *p)
 // returns the queue level to which the process belongs
 int getlev(void){
   struct proc *p = myproc();
+  // 현재 실행중인 프로세스가 없다면 -1 return 가정
+  if(p == 0){
+    return -1;
+  }
   // FCFS mode이면 99 return
   if(mode_switch==1){
     return 99;
