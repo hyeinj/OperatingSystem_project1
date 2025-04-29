@@ -37,3 +37,7 @@ entry("sbrk");
 entry("sleep");
 entry("uptime");
 entry("yield");
+entry("getlev");
+entry("setpriority");
+entry("mlfqmode");
+entry("fcfsmode");

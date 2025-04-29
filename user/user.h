@@ -24,6 +24,10 @@ int sleep(int);
 int uptime(void);
 // Project1
 void yield(void);
+int mlfqmode(void);
+int fcfsmode(void);
+int setpriority(int, int);
+int getlev(void);
 
 // ulib.c
 int stat(const char*, struct stat*);

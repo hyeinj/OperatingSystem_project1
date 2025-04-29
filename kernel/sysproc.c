@@ -98,3 +98,15 @@ sys_yield(void)
 {
   yield();
 }
+
+uint64
+sys_mlfqmode(void)
+{
+  return mlfqmode();
+}
+
+uint64
+sys_fcfsmode(void)
+{
+  return fcfsmode();
+}

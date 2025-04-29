@@ -20,13 +20,13 @@ static void freeproc(struct proc *p);
 
 extern char trampoline[]; // trampoline.S
 
-struct queue{
-  int timelimit;
-  int level;
-  struct proc* procs[NPROC]; 
+// MLFQ queue structure
+struct mlfq_queue {
+  int level;        // Queue level (0,1,2,3)
+  int timelimit;    // Time limit for this queue
 };
 
-struct queue queues[4]; //차례대로 L0, L1, L2, FCFS
+struct mlfq_queue queues[4]; // 3 levels for MLFQ + 1 for FCFS
 
 int mode_switch = 1; // 1: FCFS, 0: MLFQ
 
@@ -63,16 +63,15 @@ update_proc_level(struct proc *p)
 {
   // If process has used its entire quantum
   if (p->timequantum >= queues[p->level].timelimit) {
-    if (p->level < 2) {
-      // Move to next lower queue
+    p->timequantum = 0;
+    
+    // Move to lower priority queue if not already at lowest
+    if(p->level < 2) {
       p->level++;
-      p->timequantum = 0;
-    } else {
-      // In L2 queue, decrease priority by 1, but not below 0
-      if (p->priority > 0){
-        p->priority--;
-      }
-      p->timequantum = 0;
+    } 
+    // For L2, decrease priority if at lowest level
+    else if(p->level == 2 && p->priority > 0) {
+      p->priority--;
     }
   }
 }
@@ -107,11 +106,54 @@ int setpriority(int pid, int priority){
 
 // switches the current scheduling mode from FCFS to MLFQ
 int mlfqmode(void){
-
+  if(mode_switch == 0) {
+    printf("System is already in MLFQ mode\n");
+    return -1;
+  }
+  
+  // Switch from FCFS to MLFQ
+  struct proc *p;
+  for(p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+    if(p->state == RUNNABLE) {
+      // Initialize MLFQ parameters for each runnable process
+      p->priority = 3;
+      p->timequantum = 0;
+      p->level = 0; // All processes start in L0 queue
+    }
+    release(&p->lock);
+  }
+  
+  mode_switch = 0; // Change to MLFQ mode
+  global_tick_count = 0; // Reset global tick count
+  
+  return 0;
 }
 
 // switches the current scheduling mode from MLFQ to FCFS
 int fcfsmode(void){
+  if(mode_switch == 1){
+    printf("System is already in FCFS mode\n");
+    return -1;
+  }
+  
+  // Switch from MLFQ to FCFS
+  struct proc *p;
+  for(p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+    if(p->state == RUNNABLE) {
+      // Reset all MLFQ parameters
+      p->priority = -1;
+      p->level = -1;
+      p->timequantum = -1;
+    }
+    release(&p->lock);
+  }
+  
+  mode_switch = 1; // Change to FCFS mode
+  global_tick_count = 0; // Reset global tick count
+  
+  return 0;
 
 }
 
@@ -545,11 +587,12 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
 
+  // Initialize queues
   for(int i = 0; i<3; i++){
     queues[i].level = i;
     queues[i].timelimit = (2*i)+1;
   }
-  //fcfs queue
+  // fcfs queue
   queues[3].level = 99;
   queues[3].timelimit = -1;
 
@@ -676,7 +719,6 @@ scheduler(void)
         // If we found a process to run, break out of level loop
         if(found) break;
       }
-
     }
     
   }
