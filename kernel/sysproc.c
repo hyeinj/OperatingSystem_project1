@@ -5,6 +5,7 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "syscall.h"
 
 uint64
 sys_exit(void)
@@ -109,4 +110,17 @@ uint64
 sys_fcfsmode(void)
 {
   return fcfsmode();
+}
+
+uint64
+sys_getlev(void) {
+  return getlev();
+}
+
+uint64
+sys_setpriority(void) {
+  int pid, priority;
+  argint(0, &pid);
+  argint(1, &priority);
+  return setpriority(pid, priority); // 이미 구현된 함수 호출
 }

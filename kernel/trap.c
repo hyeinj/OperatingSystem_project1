@@ -15,6 +15,7 @@ extern char trampoline[], uservec[], userret[];
 void kernelvec();
 
 extern int devintr();
+extern int mode_switch; 
 
 void
 trapinit(void)
@@ -77,8 +78,8 @@ usertrap(void)
     exit(-1);
 
   // give up the CPU if this is a timer interrupt.
-  // if(which_dev == 2)
-  //   yield();
+  if(which_dev == 2 && mode_switch==0)
+    yield();
 
   usertrapret();
 }
@@ -151,8 +152,8 @@ kerneltrap()
   }
 
   // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2 && myproc() != 0)
-    // yield();
+  if(which_dev == 2 && myproc() != 0 && mode_switch==0)
+    yield();
 
   // the yield() may have caused some traps to occur,
   // so restore trap registers for use by kernelvec.S's sepc instruction.
