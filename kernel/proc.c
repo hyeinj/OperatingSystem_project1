@@ -261,9 +261,18 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
-  p->timequantum = -1;
-  p->level = -1;
-  p->priority = -1;
+  // Initialize MLFQ related fields
+  if(mode_switch == 1) {
+    // FCFS mode
+    p->level = -1;
+    p->priority = -1;
+    p->timequantum = -1;
+  } else {
+    // MLFQ mode
+    p->level = 0;      // Start at highest priority queue
+    p->priority = 3;   // Highest priority
+    p->timequantum = 0;
+  }
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
