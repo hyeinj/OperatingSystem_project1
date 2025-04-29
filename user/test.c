@@ -124,5 +124,15 @@ int main(int argc, char *argv[])
 
   printf("[Test 2] MLFQ Test Finished\n");
   printf("\nFCFS & MLFQ test completed!\n");
+
+// Switch to MLFQ mode again
+  if(mlfqmode() == 0) printf("successfully changed to MLFQ mode!\n");
+  else printf("nothing has been changed\n");
+
+
+  // Switch to FCFS mode - should not be changed
+  if(fcfsmode() == 0) printf("successfully changed to FCFS mode!\n");
+  else printf("nothing has been changed\n");
+
   exit(0);
 }

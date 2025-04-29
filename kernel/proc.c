@@ -22,11 +22,11 @@ extern char trampoline[]; // trampoline.S
 
 // MLFQ queue structure
 struct mlfq_queue {
-  int level;        // Queue level (0,1,2,3)
+  int level;        // Queue level (0,1,2)
   int timelimit;    // Time limit for this queue
 };
 
-struct mlfq_queue queues[4]; // 3 levels for MLFQ + 1 for FCFS
+struct mlfq_queue queues[3]; // 3 levels for MLFQ
 
 int mode_switch = 1; // 1: FCFS, 0: MLFQ
 
@@ -79,6 +79,10 @@ update_proc_level(struct proc *p)
 // returns the queue level to which the process belongs
 int getlev(void){
   struct proc *p = myproc();
+  // FCFS mode이면 99 return
+  if(mode_switch==1){
+    return 99;
+  }
   return p->level;
 }
 
