@@ -454,21 +454,22 @@ scheduler(void)
     // processes are waiting.
     intr_on(); // 혹시 인터럽트가 꺼져 있었으면 켜줌
 
-    int pid = 100000; //이전에 실행한 프로세스
     struct proc *target = 0;
 
     // int found = 0;
     for(p = proc; p < &proc[NPROC]; p++) { //모든 프로세스 배열을 돌면서
       acquire(&p->lock); // 프로세스 락을 잡고
       if(p->state == RUNNABLE){
-        if(p!=0 && p->pid < pid){
-          pid = p->pid;
+        if(!target || p->pid < target->pid){
+          if (target) {
+            release(&target->lock); // 이전 target의 락을 해제
+          }
           target = p;
+          continue;
         }
-      } else{
-        // target이 아닌 p는 lock을 풀어주기
-        release(&p->lock);
       }
+      // target이 아닌 p는 lock을 풀어주기
+      release(&p->lock);
     }
     if(target){
       // target 락은 이미 잡혀있는 상태
