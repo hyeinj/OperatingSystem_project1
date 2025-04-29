@@ -446,7 +446,6 @@ scheduler(void)
 {
   struct proc *p;
   struct cpu *c = mycpu();
-  struct proc *target = 0; //이전에 실행한 프로세스
 
   c->proc = 0; // 이 cpu는 아직 아무 프로세스도 실행 중이 아님
   for(;;){
@@ -455,20 +454,24 @@ scheduler(void)
     // processes are waiting.
     intr_on(); // 혹시 인터럽트가 꺼져 있었으면 켜줌
 
-    int found = 0;
+    int pid = 100000; //이전에 실행한 프로세스
+    struct proc *target = 0;
+
+    // int found = 0;
     for(p = proc; p < &proc[NPROC]; p++) { //모든 프로세스 배열을 돌면서
       acquire(&p->lock); // 프로세스 락을 잡고
       if(p->state == RUNNABLE){
-        if(target == 0 || p->pid < target->pid){
-          if(target) release(&target->lock);
+        if(p!=0 && p->pid < pid){
+          pid = p->pid;
           target = p;
-          continue;
         }
+      } else{
+        // target이 아닌 p는 lock을 풀어주기
+        release(&p->lock);
       }
-      release(&p->lock);
     }
     if(target){
-      acquire(&target->lock);
+      // target 락은 이미 잡혀있는 상태
       target->state = RUNNING; // running state로 변경
       c->proc = target; // 이 CPU가 이 프로세스를 실행한다고 기록
       swtch(&c->context, &target->context); // 커널 스케줄러 context -> 프로세스 context로 전환 (실제 실행)
@@ -477,10 +480,10 @@ scheduler(void)
       // It should have changed its p->state before coming back.
       // 프로세스가 돌아오면 (다시 스케줄러로 복귀)
       c->proc = 0; 
-      found = 1;
+      // found = 1;
       release(&target->lock);
-    }
-    if(found == 0) {
+      continue;
+    } else{
       // nothing to run; stop running on this core until an interrupt.
       intr_on(); // 인터럽트를 켜고
       asm volatile("wfi");  // "Wait For Interrupt" 명령어로 CPU를 일시 정지
