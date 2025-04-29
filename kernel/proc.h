@@ -105,4 +105,9 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
 
+  // project 1
+  int timequantum; //fcfs:-1, mlfq:0 ~ 2i+1
+  int level; //fcfs:-1, mlfq:0~2
+  int priority; //fcfs:-1, mlfq:0~3 - default:3
+
 };

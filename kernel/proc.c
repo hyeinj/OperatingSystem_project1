@@ -20,6 +20,101 @@ static void freeproc(struct proc *p);
 
 extern char trampoline[]; // trampoline.S
 
+struct queue{
+  int timelimit;
+  int level;
+  struct proc* procs[NPROC]; 
+};
+
+struct queue queues[4]; //차례대로 L0, L1, L2, FCFS
+
+int mode_switch = 1; // 1: FCFS, 0: MLFQ
+
+// Global tick counter for priority boosting
+int global_tick_count = 0;
+
+// Handle priority boosting
+void
+check_priority_boost(void)
+{
+  struct proc *p;
+  
+  global_tick_count++;
+  
+  if (global_tick_count >= 50) {
+    global_tick_count = 0;  // Reset global tick count
+    
+    // Move all processes back to L0 queue
+    for(p = proc; p < &proc[NPROC]; p++) {
+      acquire(&p->lock);
+      if(p->state != UNUSED) {
+        p->level = 0;           // Move to L0
+        p->timequantum= 0;         // Reset quantum (L0 : 2*0+1)
+        p->priority = 3;        // Reset priority to highest
+      }
+      release(&p->lock);
+    }
+  }
+}
+
+// Update process queue level
+void
+update_proc_level(struct proc *p)
+{
+  // If process has used its entire quantum
+  if (p->timequantum >= queues[p->level].timelimit) {
+    if (p->level < 2) {
+      // Move to next lower queue
+      p->level++;
+      p->timequantum = 0;
+    } else {
+      // In L2 queue, decrease priority by 1, but not below 0
+      if (p->priority > 0){
+        p->priority--;
+      }
+      p->timequantum = 0;
+    }
+  }
+}
+
+// returns the queue level to which the process belongs
+int getlev(void){
+  struct proc *p = myproc();
+  return p->level;
+}
+
+// sets the priority of process with the given pid
+int setpriority(int pid, int priority){
+  struct proc *p;
+  
+  // Check if priority is valid
+  if(priority < 0 || priority > 3)
+    return -2;
+  
+  // Find process with matching pid
+  for(p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+    if(p->pid == pid) {
+      p->priority = priority;
+      release(&p->lock);
+      return 0;  // Success
+    }
+    release(&p->lock);
+  }
+  
+  return -1;  // Process not found
+}
+
+// switches the current scheduling mode from FCFS to MLFQ
+int mlfqmode(void){
+
+}
+
+// switches the current scheduling mode from MLFQ to FCFS
+int fcfsmode(void){
+
+}
+
 // helps ensure that wakeups of wait()ing
 // parents are not lost. helps obey the
 // memory model when using p->parent.
@@ -124,6 +219,9 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
+  p->timequantum = -1;
+  p->level = -1;
+  p->priority = -1;
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -447,6 +545,14 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
 
+  for(int i = 0; i<3; i++){
+    queues[i].level = i;
+    queues[i].timelimit = (2*i)+1;
+  }
+  //fcfs queue
+  queues[3].level = 99;
+  queues[3].timelimit = -1;
+
   c->proc = 0; // 이 cpu는 아직 아무 프로세스도 실행 중이 아님
   for(;;){
     // The most recent process to run may have had interrupts
@@ -454,41 +560,125 @@ scheduler(void)
     // processes are waiting.
     intr_on(); // 혹시 인터럽트가 꺼져 있었으면 켜줌
 
-    struct proc *target = 0;
+    // FCFS
+    if(mode_switch==1){
+      struct proc *target = 0;
 
-    // int found = 0;
-    for(p = proc; p < &proc[NPROC]; p++) { //모든 프로세스 배열을 돌면서
-      acquire(&p->lock); // 프로세스 락을 잡고
-      if(p->state == RUNNABLE){
-        if(!target || p->pid < target->pid){
-          if (target) {
-            release(&target->lock); // 이전 target의 락을 해제
+      // int found = 0;
+      for(p = proc; p < &proc[NPROC]; p++) { //모든 프로세스 배열을 돌면서
+        acquire(&p->lock); // 프로세스 락을 잡고
+        if(p->state == RUNNABLE){
+          if(!target || p->pid < target->pid){
+            if (target) {
+              release(&target->lock); // 이전 target의 락을 해제
+            }
+            target = p;
+            continue;
           }
-          target = p;
-          continue;
         }
+        // target이 아닌 p는 lock을 풀어주기
+        release(&p->lock);
       }
-      // target이 아닌 p는 lock을 풀어주기
-      release(&p->lock);
-    }
-    if(target){
-      // target 락은 이미 잡혀있는 상태
-      target->state = RUNNING; // running state로 변경
-      c->proc = target; // 이 CPU가 이 프로세스를 실행한다고 기록
-      swtch(&c->context, &target->context); // 커널 스케줄러 context -> 프로세스 context로 전환 (실제 실행)
+      if(target){
+        // target 락은 이미 잡혀있는 상태
+        target->state = RUNNING; // running state로 변경
+        c->proc = target; // 이 CPU가 이 프로세스를 실행한다고 기록
+        swtch(&c->context, &target->context); // 커널 스케줄러 context -> 프로세스 context로 전환 (실제 실행)
 
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      // 프로세스가 돌아오면 (다시 스케줄러로 복귀)
-      c->proc = 0; 
-      // found = 1;
-      release(&target->lock);
-      continue;
-    } else{
-      // nothing to run; stop running on this core until an interrupt.
-      intr_on(); // 인터럽트를 켜고
-      asm volatile("wfi");  // "Wait For Interrupt" 명령어로 CPU를 일시 정지
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        // 프로세스가 돌아오면 (다시 스케줄러로 복귀)
+        c->proc = 0; 
+        // found = 1;
+        release(&target->lock);
+        continue;
+      } else{
+        // nothing to run; stop running on this core until an interrupt.
+        intr_on(); // 인터럽트를 켜고
+        asm volatile("wfi");  // "Wait For Interrupt" 명령어로 CPU를 일시 정지
+      }
+    } 
+    // MLFQ
+    else{
+      check_priority_boost();
+    
+      int found = 0;
+
+      // Try to schedule processes from L0 (highest priority)
+      for (int level = 0; level < 3 && !found; level++) {
+        
+        // For L0 and L1: Round-robin scheduling
+        if (level < 2) {
+          for(p = proc; p < &proc[NPROC]; p++) {
+            acquire(&p->lock);
+            if(p->state == RUNNABLE && p->level == level) {
+              // Switch to chosen process.
+              p->state = RUNNING;
+              c->proc = p;
+              swtch(&c->context, &p->context);
+              
+              // Process is done running for now.
+              c->proc = 0;
+              
+              // Increment timequantum used
+              p->timequantum++;
+              
+              // Check if process needs to move queue
+              update_proc_level(p);
+              
+              found = 1;
+              release(&p->lock);
+              break;
+            }
+            release(&p->lock);
+          }
+        }
+        // For L2: Priority-based scheduling
+        else {
+          struct proc *highest_priority_proc = 0;
+          int highest_priority = -1;
+          
+          // Find highest priority process in L2
+          for(p = proc; p < &proc[NPROC]; p++) {
+            acquire(&p->lock);
+            if(p->state == RUNNABLE && p->level == 2 && p->priority > highest_priority) {
+              if(highest_priority_proc) {
+                release(&highest_priority_proc->lock);
+              }
+              highest_priority_proc = p;
+              highest_priority = p->priority;
+            } else {
+              release(&p->lock);
+            }
+          }
+          
+          // Schedule the highest priority process from L2
+          if(highest_priority_proc) {
+            p = highest_priority_proc;
+            p->state = RUNNING;
+            c->proc = p;
+            swtch(&c->context, &p->context);
+            
+            // Process is done running for now.
+            c->proc = 0;
+            
+            // Increment timequantum used
+            p->timequantum++;
+            
+            // Check if process needs to move queue or decrease priority
+            update_proc_level(p);
+            
+            found = 1;
+            release(&p->lock);
+          }
+        }
+        
+        // If we found a process to run, break out of level loop
+        if(found) break;
+      }
+
     }
+    
   }
 }
 

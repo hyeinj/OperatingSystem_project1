@@ -67,9 +67,9 @@ void exit_children()
 
 int main(int argc, char *argv[])
 {
-//   int i;
+  int i;
   int pid;
-//   int count[MAX_LEVEL] = {0};
+  int count[MAX_LEVEL] = {0};
 
   parent = getpid();
 
@@ -91,38 +91,38 @@ int main(int argc, char *argv[])
   exit_children();
   printf("[Test 1] FCFS Test Finished\n\n");
 
-//   // Switch to FCFS mode - should not be changed
-//   if(fcfsmode() == 0) printf("successfully changed to FCFS mode!\n");
-//   else printf("nothing has been changed\n");
+  // Switch to FCFS mode - should not be changed
+  if(fcfsmode() == 0) printf("successfully changed to FCFS mode!\n");
+  else printf("nothing has been changed\n");
 
-//   // Switch to MLFQ mode
-//   if(mlfqmode() == 0) printf("successfully changed to MLFQ mode!\n");
-//   else printf("nothing has been changed\n");
+  // Switch to MLFQ mode
+  if(mlfqmode() == 0) printf("successfully changed to MLFQ mode!\n");
+  else printf("nothing has been changed\n");
 
-//   // [Test 2] MLFQ test
-//   printf("\n[Test 2] MLFQ Scheduling\n");
-//   pid = fork_children();
+  // [Test 2] MLFQ test
+  printf("\n[Test 2] MLFQ Scheduling\n");
+  pid = fork_children();
 
-//   if (pid != parent)
-//   {
-//     for (i = 0; i < NUM_LOOP; i++)
-//     {
-//       int x = getlev();
-//       if (x < 0 || x >= MAX_LEVEL)
-//       {
-//         printf("Wrong level: %d\n", x);
-//         exit(1);
-//       }
-//       count[x]++;
-//     }
+  if (pid != parent)
+  {
+    for (i = 0; i < NUM_LOOP; i++)
+    {
+      int x = getlev();
+      if (x < 0 || x >= MAX_LEVEL)
+      {
+        printf("Wrong level: %d\n", x);
+        exit(1);
+      }
+      count[x]++;
+    }
 
-//     printf("Process %d (MLFQ L0-L2 hit count):\n", pid);
-//     for (i = 0; i < MAX_LEVEL; i++)
-//       printf("L%d: %d\n", i, count[i]);
-//   }
-//   exit_children();
+    printf("Process %d (MLFQ L0-L2 hit count):\n", pid);
+    for (i = 0; i < MAX_LEVEL; i++)
+      printf("L%d: %d\n", i, count[i]);
+  }
+  exit_children();
 
-//   printf("[Test 2] MLFQ Test Finished\n");
-//   printf("\nFCFS & MLFQ test completed!\n");
+  printf("[Test 2] MLFQ Test Finished\n");
+  printf("\nFCFS & MLFQ test completed!\n");
   exit(0);
 }
