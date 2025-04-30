@@ -17,6 +17,25 @@ void kernelvec();
 extern int devintr();
 extern int mode_switch; 
 extern int global_tick_count;
+extern struct proc proc[NPROC];
+
+// Handle priority boosting
+void
+priority_boost(void)
+{
+  struct proc *p;
+  
+  // Move all processes back to L0 queue
+  for(p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+    if(p->state != UNUSED) {
+      p->level = 0;           // Move to L0
+      p->timequantum= 0;         // Reset quantum (L0 : 2*0+1)
+      p->priority = 3;        // Reset priority to highest
+    }
+    release(&p->lock);
+  }
+}
 
 void
 trapinit(void)
