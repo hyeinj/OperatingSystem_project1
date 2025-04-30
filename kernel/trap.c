@@ -16,6 +16,7 @@ void kernelvec();
 
 extern int devintr();
 extern int mode_switch; 
+extern int global_tick_count;
 
 void
 trapinit(void)
@@ -167,6 +168,12 @@ clockintr()
   if(cpuid() == 0){
     acquire(&tickslock);
     ticks++;
+    //priority boosting 관련 코드 추가
+    global_tick_count++;
+    if (global_tick_count >= 50) {
+      global_tick_count = 0;
+      priority_boost();  //여기서 boosting 수행
+    }
     wakeup(&ticks);
     release(&tickslock);
   }

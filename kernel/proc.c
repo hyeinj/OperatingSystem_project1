@@ -35,25 +35,19 @@ int global_tick_count = 0;
 
 // Handle priority boosting
 void
-check_priority_boost(void)
+priority_boost(void)
 {
   struct proc *p;
   
-  global_tick_count++;
-  
-  if (global_tick_count >= 50) {
-    global_tick_count = 0;  // Reset global tick count
-    
-    // Move all processes back to L0 queue
-    for(p = proc; p < &proc[NPROC]; p++) {
-      acquire(&p->lock);
-      if(p->state != UNUSED) {
-        p->level = 0;           // Move to L0
-        p->timequantum= 0;         // Reset quantum (L0 : 2*0+1)
-        p->priority = 3;        // Reset priority to highest
-      }
-      release(&p->lock);
+  // Move all processes back to L0 queue
+  for(p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+    if(p->state != UNUSED) {
+      p->level = 0;           // Move to L0
+      p->timequantum= 0;         // Reset quantum (L0 : 2*0+1)
+      p->priority = 3;        // Reset priority to highest
     }
+    release(&p->lock);
   }
 }
 
