@@ -585,9 +585,6 @@ scheduler(void)
     queues[i].level = i;
     queues[i].timelimit = (2*i)+1;
   }
-  // fcfs queue
-  queues[3].level = 99;
-  queues[3].timelimit = -1;
 
   c->proc = 0; // 이 cpu는 아직 아무 프로세스도 실행 중이 아님
   for(;;){
