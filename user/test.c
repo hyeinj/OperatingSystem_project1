@@ -134,5 +134,21 @@ int main(int argc, char *argv[])
   if(fcfsmode() == 0) printf("successfully changed to FCFS mode!\n");
   else printf("nothing has been changed\n");
 
+  // [Test 3] FCFS test
+  printf("[Test 3] FCFS Queue Execution Order\n");
+  pid = fork_children();
+
+  if (pid != parent)
+  {
+    while(fcfs_count[pid] < NUM_LOOP)
+    {
+      fcfs_count[pid]++;
+    }
+
+    printf("Process %d executed %d times\n", pid, fcfs_count[pid]);
+  }
+  exit_children();
+  printf("[Test 3] FCFS Test Finished\n\n");
+
   exit(0);
 }
